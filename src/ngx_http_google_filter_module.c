@@ -54,14 +54,19 @@ ngx_http_google_filter_google_schema_reverse_var(ngx_http_request_t        * r,
                                                  ngx_http_variable_value_t * v,
                                                  uintptr_t data);
 
+// define this google reverse proxy module
 static ngx_command_t
 ngx_http_google_filter_commands[] = {
   {
     ngx_string("google"),
     NGX_HTTP_LOC_CONF | NGX_CONF_TAKE1,
+    //parse config function
     ngx_http_google_filter,
+    // set this command in main, server or location section
     NGX_HTTP_LOC_CONF_OFFSET,
+    // store the value of this command in ngx_http_google_loc_conf_t.enable
     offsetof(ngx_http_google_loc_conf_t, enable),
+    // a ptr to date using in parsing conf
     NULL
   },
   {
@@ -96,33 +101,54 @@ ngx_http_google_filter_commands[] = {
     offsetof(ngx_http_google_loc_conf_t, robots),
     NULL
   },
+  // indicate the end of commands
   ngx_null_command
 };
 
+// defined contex,
 static ngx_http_module_t
 ngx_http_google_filter_module_ctx = {
+  //preconfiguration
   ngx_http_google_filter_pre_config,
+  //postconfiguration
   ngx_http_google_filter_post_config,
+  //create_main_conf
   ngx_http_google_filter_create_main_conf,
+  //init_main_conf
   NULL,
+  //create_srv_conf
   NULL,
+  //merge_srv_conf
   NULL,
+  //create_loc_conf
   ngx_http_google_filter_create_loc_conf,
+  //merge_loc_conf
   ngx_http_google_filter_merge_loc_conf,
 };
 
 ngx_module_t
 ngx_http_google_filter_module = {
+  //default
   NGX_MODULE_V1,
+  /* module context */
   &ngx_http_google_filter_module_ctx,
+  /* module directives */
   ngx_http_google_filter_commands,
+  /* module type */
   NGX_HTTP_MODULE,
+  /* init master */
   NULL,
+  /* init module */
   NULL,
+  /* init process */
   NULL,
+  /* init thread */
   NULL,
+  /* exit thread */
   NULL,
+  /* exit process */
   NULL,
+  /* exit master */
   NULL,
   NGX_MODULE_V1_PADDING
 };
@@ -199,17 +225,17 @@ static char *
 ngx_http_google_filter(ngx_conf_t * cf, ngx_command_t * cmd, void * conf)
 {
   if (ngx_conf_set_flag_slot(cf, cmd, conf)) return NGX_CONF_ERROR;
-  
+
   ngx_http_google_loc_conf_t * glcf = conf;
   if (glcf->enable != 1) return NGX_CONF_OK;
-  
+
   ngx_http_google_main_conf_t * gmcf;
   gmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_google_filter_module);
   gmcf->enable = 1;
-  
+
   if (ngx_http_google_inject_subs (cf)) return NGX_CONF_ERROR;
   if (ngx_http_google_inject_proxy(cf)) return NGX_CONF_ERROR;
-  
+
   return NGX_CONF_OK;
 }
 
@@ -217,19 +243,19 @@ static char *
 ngx_http_google_filter_language(ngx_conf_t * cf, ngx_command_t * cmd, void * conf)
 {
   ngx_http_google_loc_conf_t * glcf = conf;
-  
+
   ngx_str_t * v   = ((ngx_str_t *)cf->args->elts) + 1;
   ngx_str_t * def = ngx_http_google_language;
-  
+
   for (; def->len; def++) {
     if (v->len != def->len)                        continue;
     if (ngx_strncmp(v->data, def->data, def->len)) continue;
     glcf->language = *v;
   }
-  
+
   if (!glcf->language.len) return "language not support";
-  
-  
+
+
   return NGX_CONF_OK;
 }
 
@@ -237,10 +263,10 @@ static void *
 ngx_http_google_filter_create_main_conf(ngx_conf_t * cf)
 {
   ngx_http_google_main_conf_t  *conf;
-  
+
   conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_google_main_conf_t));
   if (conf == NULL) return NULL;
-  
+
   return conf;
 }
 
@@ -248,15 +274,15 @@ static void *
 ngx_http_google_filter_create_loc_conf(ngx_conf_t * cf)
 {
   ngx_http_google_loc_conf_t  *conf;
-  
+
   conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_google_loc_conf_t));
   if (conf == NULL) return NULL;
-  
+
   conf->robots  = NGX_CONF_UNSET;
   conf->enable  = NGX_CONF_UNSET;
   conf->scholar = NGX_CONF_UNSET;
   conf->ssloff  = NGX_CONF_UNSET_PTR;
-  
+
   return conf;
 }
 
@@ -266,13 +292,13 @@ ngx_http_google_filter_merge_loc_conf(ngx_conf_t * cf, void * parent,
 {
   ngx_http_google_loc_conf_t * prev = parent;
   ngx_http_google_loc_conf_t * conf = child;
-  
+
   ngx_conf_merge_value    (conf->robots,   prev->robots,   NGX_CONF_UNSET);
   ngx_conf_merge_value    (conf->enable,   prev->enable,   NGX_CONF_UNSET);
   ngx_conf_merge_value    (conf->scholar,  prev->scholar,  NGX_CONF_UNSET);
   ngx_conf_merge_ptr_value(conf->ssloff,   prev->ssloff,   NGX_CONF_UNSET_PTR);
   ngx_conf_merge_str_value(conf->language, prev->language, "zh-CN");
-  
+
   return NGX_CONF_OK;
 }
 
@@ -280,18 +306,18 @@ static ngx_int_t
 ngx_http_google_filter_pre_config(ngx_conf_t * cf)
 {
   ngx_http_variable_t * var, * v;
-  
+
   for (v = ngx_http_google_vars; v->name.len; v++)
   {
     var = ngx_http_add_variable(cf, &v->name, v->flags);
     if (var == NULL) {
       return NGX_ERROR;
     }
-    
+
     var->get_handler = v->get_handler;
     var->data = v->data;
   }
-  
+
   return NGX_OK;
 }
 
@@ -299,25 +325,26 @@ static ngx_int_t
 ngx_http_google_filter_post_config(ngx_conf_t * cf)
 {
   ngx_http_google_main_conf_t * gmcf;
-  
+
   gmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_google_filter_module);
   if (!gmcf->enable) return NGX_OK;
-  
+
   ngx_http_core_main_conf_t * cmcf;
   cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
-  
+
   ngx_http_handler_pt * h;
+  //the phase to rewrite location requst address,NGX_HTTP_REWRITE_PHASE
   h = ngx_array_push(&cmcf->phases[NGX_HTTP_REWRITE_PHASE].handlers);
  *h = ngx_http_google_request_handler;
-  
+
   // header filter chain
   gmcf->next_header_filter   = ngx_http_top_header_filter;
   ngx_http_top_header_filter = ngx_http_google_response_header_filter;
-  
+
   // body filter chain
   gmcf->next_body_filter     = ngx_http_top_body_filter;
   ngx_http_top_body_filter   = ngx_http_google_response_body_filter;
-  
+
   return NGX_OK;
 }
 
@@ -327,22 +354,22 @@ ngx_http_google_filter_google_var(ngx_http_request_t        * r,
 {
   ngx_http_google_ctx_t * ctx;
   ctx = ngx_http_get_module_ctx(r, ngx_http_google_filter_module);
-  
+
   if (ctx == NULL) {
     v->not_found = 1;
     return NGX_OK;
   }
-  
+
   ngx_http_google_loc_conf_t * glcf;
   glcf = ngx_http_get_module_loc_conf(r, ngx_http_google_filter_module);
-  
+
   ngx_int_t ssl = 1;
-  
+
   if (glcf->ssloff != NGX_CONF_UNSET_PTR) {
-    
+
     ngx_uint_t   i;
     ngx_str_t * hd = glcf->ssloff->elts, * domain;
-    
+
     for (i = 0; i < glcf->ssloff->nelts; i++) {
       domain = hd + i;
       if (ctx->pass->len != domain->len)                           continue;
@@ -350,17 +377,17 @@ ngx_http_google_filter_google_var(ngx_http_request_t        * r,
       ssl = 0; break;
     }
   }
-  
+
 #if ! (NGX_HTTP_SSL)
   ssl = 0;
 #endif
-  
+
   v->len = 7 + (unsigned)ctx->pass->len;
   if (ssl) v->len++;
-  
+
   v->data = ngx_pcalloc(r->pool, v->len);
   ngx_snprintf(v->data, v->len, "%s%V", ssl ? "https://" : "http://", ctx->pass);
-  
+
   return NGX_OK;
 }
 
@@ -371,15 +398,15 @@ ngx_http_google_filter_google_host_var(ngx_http_request_t        * r,
 {
   ngx_http_google_ctx_t * ctx;
   ctx = ngx_http_get_module_ctx(r, ngx_http_google_filter_module);
-  
+
   if (ctx == NULL) {
     v->not_found = 1;
     return NGX_OK;
   }
-  
+
   v->len  = (unsigned)ctx->host->len;
   v->data = ctx->host->data;
-  
+
   return NGX_OK;
 }
 
@@ -390,17 +417,17 @@ ngx_http_google_filter_google_schema_var(ngx_http_request_t        * r,
 {
   ngx_http_google_ctx_t * ctx;
   ctx = ngx_http_get_module_ctx(r, ngx_http_google_filter_module);
-  
+
   if (ctx == NULL) {
     v->not_found = 1;
     return NGX_OK;
   }
-  
+
   v->len  = 5;
   v->data = (u_char *)"https";
-  
+
   if (!ctx->ssl) v->len--;
-  
+
   return NGX_OK;
 }
 
@@ -411,19 +438,16 @@ ngx_http_google_filter_google_schema_reverse_var(ngx_http_request_t        * r,
 {
   ngx_http_google_ctx_t * ctx;
   ctx = ngx_http_get_module_ctx(r, ngx_http_google_filter_module);
-  
+
   if (ctx == NULL) {
     v->not_found = 1;
     return NGX_OK;
   }
-  
+
   v->len  = 5;
   v->data = (u_char *)"https";
-  
+
   if (ctx->ssl) v->len--;
-  
+
   return NGX_OK;
 }
-
-
-
